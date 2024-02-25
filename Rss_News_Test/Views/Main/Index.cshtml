@@ -1,0 +1,235 @@
+﻿<div id="app">
+	<div class="main-page">
+		<div class="news-table">
+			<label>Максимальное количество записей для вывода</label>
+
+			<select v-model="limit" v-on:change="GetNewsFromDb()">
+				<option selected>5</option>
+				<option>15</option>
+				<option>30</option>
+				<option>50</option>
+				<option value="0">Все</option>
+			</select>
+
+			<label>Поиск по заголовку новости:</label>
+			<input type="text" v-model="title" v-on:change="GetNewsFromDb()" />
+
+			<label>Поиск по телу новости:</label>
+			<input type="text" v-model="body" v-on:change="GetNewsFromDb()" />
+			 
+			<label>Загрузить новости по ссылке</label>
+			<input type="text" v-model="rssUrl" />
+			<button v-on:click="GetNewsFromRss()">Загрузить</button>
+
+			<div v-if="isNewsLoaded" class="news-table-container">
+				<div class="pages-container">
+					<button v-if="currentPage > 1" v-on:click="currentPage-=1; GetNewsFromDb()">
+						<<
+					</button>
+					<label>{{currentPage}} из {{countOfPages}}</label>
+					<button v-if="currentPage < countOfPages" v-on:click="currentPage+=1; GetNewsFromDb()">
+						>>
+					</button>
+				</div>
+
+				<table border="1">
+					<tr>
+						<th>Заголовок</th>
+						<th>Содержание</th>
+						<th>Ссылка</th>
+						<th>Дата добавления</th>
+					</tr>
+					<tr v-if="isNewsLoaded" v-for="news in newsFromDb">
+						<td>{{news.title}}</td>
+						<td>{{news.body}}</td>
+						<td>{{news.url}}</td>
+						<td>{{news.addingDate}}</td>
+					</tr>
+				</table>
+				
+			</div>
+
+			<div v-else class="loader-container">
+				<span class="loader"></span>
+			</div>
+
+		</div>
+	</div>
+</div>
+
+<style>
+	.main-page {
+		width: 100%;
+		height: 100%
+	}
+
+	.news-table-container {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.loader-container {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.loader {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  border: 3px solid;
+  border-color: #FFF #FFF transparent transparent;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+}
+.loader::after,
+.loader::before {
+  content: '';  
+  box-sizing: border-box;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  border: 3px solid;
+  border-color: transparent transparent #FF3D00 #FF3D00;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  animation: rotationBack 0.5s linear infinite;
+  transform-origin: center center;
+}
+.loader::before {
+  width: 32px;
+  height: 32px;
+  border-color: #FFF #FFF transparent transparent;
+  animation: rotation 1.5s linear infinite;
+}
+    
+@@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+} 
+@@keyframes rotationBack {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+    
+
+	.pages-container 
+	{
+		display:flex;
+		flex-direction:row;
+		align-items:center;
+		justify-content:center;
+	}
+
+</style>
+
+<script src="/js/axios.min.js"></script>
+<script src="~/js/vue.js"></script>
+
+<script>
+	const app = new Vue({
+		el: '#app',
+		data: {
+			newsFromDb: [],
+			newsCount: 0,
+			currentPage: 1,
+			countOfPages: 1,
+			limit: 5,
+			title: null,
+			body: null,
+			rssUrl: null,
+			isNewsLoaded: false,
+			url:null
+		},
+
+		mounted() {
+
+			this.GetNewsFromDb();
+		},
+
+		methods: {
+
+			FilterNews()
+			{
+				if (this.title)
+					this.url += "&title=" + this.title;
+
+				if (this.body)
+					this.url += "&body=" + this.body;
+
+			},
+
+			async GetNewsFromDb() {
+
+				this.isNewsLoaded = false;
+
+				this.url = "/news?limit=" + this.limit;
+
+				this.FilterNews();
+	
+				this.url += "&page=" + this.currentPage;
+
+				await axios.get(this.url)
+					.then(response => {
+							this.newsFromDb = response.data.data;
+							this.currentPage = response.data.page;
+							this.countOfPages = response.data.maxPage;
+							this.isNewsLoaded = true;
+						
+					}).catch(error => {
+						alert("Ошибка при получении данных");
+						this.isNewsLoaded = true;
+					})
+			},
+
+		
+			async GetNewsFromRss() {
+
+				if (this.rssUrl) {
+
+					this.isNewsLoaded = false;
+
+					let rssForm = {
+						url: this.rssUrl
+					};
+
+
+					await axios.post("/rss", rssForm)
+						.then(response => {
+								alert("Даные успешно загружены");
+								this.GetNewsFromDb();
+					
+						}).catch(error => {
+							alert("Ошибка: " + error.message);
+							this.isNewsLoaded = true;
+						})
+				}
+
+				else alert("Вы не указали адрес");
+			}
+
+		}
+	})
+</script>
