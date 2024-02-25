@@ -1,0 +1,35 @@
+version: '3.4'
+
+networks:
+  app-network:
+    driver: bridge
+
+services:
+  rss_news_test:
+    image: ${DOCKER_REGISTRY-}rssnewstest
+    build:
+      context: .
+      dockerfile: Rss_News_Test/Dockerfile
+    ports:
+    - "80:80" 
+    networks:
+      - app-network
+
+  postgres-db:
+    container_name: postgres_db
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+     - "5432:5432"
+    networks:
+     - app-network
+  redis-cache:
+    container_name: redis-cache
+    image: redis:latest
+    ports:
+      - "6379:6479"
+    networks:
+      - app-network
